@@ -23,6 +23,15 @@ SHOT = os.path.join(ROOT, "docs")
 MAX_W = 6.1          # inch — bề ngang tối đa vừa khổ A4 lề mặc định
 MAX_H = 7.8          # inch — cao tối đa để ảnh không tràn sang trang sau
 
+# Danh sách nhóm 1 — trích từ DS_IE402_F31_Danhsachlop
+THANH_VIEN = [
+    ("23730217", "Nguyễn Hữu Tín"),      # nhóm trưởng
+    ("23730177", "Nguyễn Minh Khôi"),
+    ("23730226", "Nguyễn Tường Vy"),
+    ("23730204", "Võ Thành Nhân"),
+]
+TEN_NHOM = "Nhóm 1"
+
 TIEU_DE = ("HỆ THỐNG CHẤM CÔNG ĐỊNH VỊ 3D\n"
            "THEO MÔ HÌNH KHỐI KHÔNG GIAN PHÂN TẦNG")
 
@@ -567,6 +576,43 @@ def ch3_giao_dien(b):
             "Hình 3.1 — Ba khối MAP trong cùng một toà nhà: Alpha Tech (cam, tầng 5–8), "
             "Beta Finance (xanh, tầng 20–24), Gamma Media (tím, tầng 35–40)")
 
+    b.para()
+    b.para("Hệ thống đã cài đặt", bold=True)
+    b.para("Toàn bộ danh sách màn hình trên đã được cài đặt thành ứng dụng chạy được, "
+           "không dừng ở mức mô tả. Máy chủ Node.js với Express nói chuyện trực tiếp "
+           "với PostgreSQL/PostGIS và phục vụ luôn giao diện web tĩnh, nên hệ thống "
+           "chạy trên một cổng duy nhất — điều này quan trọng vì Geolocation API chỉ "
+           "cấp quyền định vị trên HTTPS hoặc localhost.")
+    b.para("Về mặt kiến trúc, phép kiểm tra bao hàm khối không được viết lại ở tầng "
+           "ứng dụng mà gọi thẳng hàm kiem_tra_bao_ham() và kiem_tra_r2() đã cài đặt "
+           "trong cơ sở dữ liệu. Nhờ vậy logic không gian chỉ tồn tại một bản duy nhất, "
+           "đặt ngay cạnh dữ liệu. Mỗi lần chấm công được xử lý trong một giao dịch: "
+           "ghi bản ghi, áp bốn quy tắc R1–R4 rồi ghi cảnh báo; lỗi ở bất kỳ bước nào "
+           "thì huỷ toàn bộ.")
+    b.table(
+        ["Phương thức", "Đường dẫn", "Quyền", "Chức năng"],
+        [
+            ["POST", "/api/dang-nhap", "—", "Đăng nhập, trả về JWT"],
+            ["GET", "/api/toi", "đã đăng nhập", "Thông tin nhân viên và khối MAP của họ"],
+            ["GET", "/api/khu-vuc", "đã đăng nhập", "Danh sách khối MAP để vẽ bản đồ"],
+            ["POST", "/api/cham-cong", "đã đăng nhập",
+             "Kiểm tra bao hàm khối, áp R1–R4, ghi bản ghi và cảnh báo"],
+            ["GET", "/api/cham-cong/lich-su", "đã đăng nhập", "Lịch sử của chính mình"],
+            ["POST", "/api/giai-trinh", "đã đăng nhập", "Gửi đơn giải trình"],
+            ["GET", "/api/giai-trinh", "quản lý", "Danh sách đơn"],
+            ["PUT", "/api/giai-trinh/:id", "quản lý", "Duyệt hoặc từ chối đơn"],
+            ["GET", "/api/canh-bao", "quản lý", "Danh sách cảnh báo bất thường"],
+            ["GET", "/api/dashboard", "quản lý", "Số liệu tổng hợp"],
+            ["GET", "/api/bao-cao/cong", "quản lý", "Báo cáo công theo tháng"],
+        ],
+        widths=[0.85, 1.6, 0.95, 2.7])
+    b.image(os.path.join(SHOT, "03-app-cham-cong.png"),
+            "Hình 3.2 — Màn hình chấm công đã cài đặt: thông tin làm việc lấy từ cơ sở "
+            "dữ liệu, thanh chọn tầng, bản đồ ba chiều hiển thị các khối MAP")
+    b.image(os.path.join(SHOT, "04-app-quan-ly.png"),
+            "Hình 3.3 — Bảng điều khiển của quản lý: số liệu tổng hợp và danh sách "
+            "cảnh báo bất thường sinh ra từ bốn quy tắc R1–R4")
+
 
 def ch4_ket_qua(b):
     b.para("Bản dựng thử nghiệm sử dụng dữ liệu thật: footprint toà nhà IFC One "
@@ -595,6 +641,33 @@ def ch4_ket_qua(b):
     b.image(os.path.join(SHOT, "02-ket-qua-nghi-ngo.png"),
             "Hình 4.1 — Màn hình kết quả tình huống sai tầng; điểm chấm công (hình "
             "cầu) nằm trong khối của doanh nghiệp khác")
+    b.para()
+    b.para("Kiểm chứng cơ sở dữ liệu và toàn hệ thống", bold=True)
+    b.para("Lược đồ và các hàm nghiệp vụ đã được chạy thật trên PostgreSQL 17.6 kết "
+           "hợp PostGIS 3.6.2: tạo 15 bảng, 4 hàm và 1 trigger; trigger suy cao độ cho "
+           "ra đúng các dải 23,60–42,20 m, 93,35–116,60 m và 163,10–191,00 m như công "
+           "thức đã nêu. Sau đó các luồng nghiệp vụ được chạy thử đầu cuối qua API "
+           "thật trên chính cơ sở dữ liệu đó.")
+    b.table(
+        ["Kịch bản kiểm thử", "Kết quả hệ thống trả về"],
+        [
+            ["Chấm công đúng tầng 6", "HOP_LE"],
+            ["Khai báo tầng 22 trong khi thuê tầng 5–8",
+             "NGHI_NGO, kèm cảnh báo R1: lệch 62,78 m tương đương 13,5 tầng"],
+            ["Chấm công ở vị trí cách toà nhà 270 m",
+             "NGOAI_VUNG, kèm cảnh báo R2 về dịch chuyển bất khả thi"],
+            ["Thiết bị báo độ chính xác 0,3 m",
+             "Cảnh báo R3: độ chính xác nhỏ bất thường, nghi giả lập vị trí"],
+            ["Nhân viên khác dùng lại cùng một thiết bị",
+             "Cảnh báo R4: thiết bị vừa được nhân viên khác dùng để chấm công"],
+            ["Nhân viên gọi API dành cho quản lý",
+             "HTTP 403 — không đủ quyền thực hiện chức năng này"],
+            ["Quản lý duyệt đơn giải trình",
+             "Bản ghi chuyển từ NGOAI_VUNG sang HOP_LE, cảnh báo liên quan được đóng, "
+             "báo cáo công cập nhật theo"],
+        ],
+        widths=[2.6, 3.5])
+
     b.para("Kết quả đạt được", bold=True)
     b.bullets([
         "Định nghĩa và cài đặt hoàn chỉnh mô hình MAP, gồm công thức suy cao độ từ dải tầng.",
@@ -660,6 +733,24 @@ def main():
                 r.text = ""
             p.runs[0].text = TIEU_DE
             break
+
+    # --- điền tên nhóm và bảng thành viên trên trang bìa
+    for p2 in doc.paragraphs:
+        if p2.text.strip().startswith("Tên nhóm:"):
+            for r in p2.runs:
+                r.text = ""
+            if p2.runs:
+                p2.runs[0].text = "Tên nhóm: " + TEN_NHOM
+            break
+
+    if doc.tables:
+        bang = doc.tables[0]
+        for k, (mssv, ho_ten) in enumerate(THANH_VIEN, start=1):
+            if k < len(bang.rows):
+                o = bang.rows[k].cells
+                o[0].text = str(k)
+                o[1].text = mssv
+                o[2].text = ho_ten
 
     fill(doc, "<Viết giới thiệu về đề tài", ch1_tong_quan)
     fill(doc, "<Vấn đề hiện đang tồn tại", ch1_dat_van_de)
