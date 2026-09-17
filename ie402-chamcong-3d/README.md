@@ -88,7 +88,7 @@ ie402-chamcong-3d/
 │   ├── app.js              Gọi API + dựng bản đồ 3D bằng ArcGIS SDK
 │   └── style.css
 ├── db/
-│   ├── schema.sql          15 bảng, 4 hàm, 1 trigger
+│   ├── schema.sql          14 bảng, 4 hàm, 1 trigger
 │   ├── seed.sql            Toà nhà IFC One Saigon + 3 văn phòng + 4 nhân viên
 │   └── README.md           Cách dựng PostGIS và kết quả đã kiểm chứng
 ├── prototype/              Bản dựng đầu tiên: chỉ thuật toán, chạy hoàn toàn ở trình duyệt

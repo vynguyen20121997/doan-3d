@@ -644,7 +644,7 @@ def ch4_ket_qua(b):
     b.para()
     b.para("Kiểm chứng cơ sở dữ liệu và toàn hệ thống", bold=True)
     b.para("Lược đồ và các hàm nghiệp vụ đã được chạy thật trên PostgreSQL 17.6 kết "
-           "hợp PostGIS 3.6.2: tạo 15 bảng, 4 hàm và 1 trigger; trigger suy cao độ cho "
+           "hợp PostGIS 3.6.2: tạo 14 bảng, 4 hàm và 1 trigger; trigger suy cao độ cho "
            "ra đúng các dải 23,60–42,20 m, 93,35–116,60 m và 163,10–191,00 m như công "
            "thức đã nêu. Sau đó các luồng nghiệp vụ được chạy thử đầu cuối qua API "
            "thật trên chính cơ sở dữ liệu đó.")

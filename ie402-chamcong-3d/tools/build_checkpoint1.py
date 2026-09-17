@@ -990,7 +990,7 @@ table(
         ["web/", "HTML/CSS/JavaScript thuần + ArcGIS SDK",
          "Đăng nhập, chấm công, lịch sử, bảng điều khiển, bản đồ ba chiều"],
         ["db/", "PostgreSQL 17.6 + PostGIS 3.6.2",
-         "15 bảng, 4 hàm, 1 trigger; chứa toàn bộ logic không gian"],
+         "14 bảng, 4 hàm, 1 trigger; chứa toàn bộ logic không gian"],
     ],
     widths=[1.1, 2.1, 2.9])
 
@@ -1064,7 +1064,7 @@ body_text(
 table(
     ["Hạng mục kiểm chứng", "Kết quả"],
     [
-        ["Chạy schema.sql", "Thành công, tạo 15 bảng, 4 hàm và 1 trigger"],
+        ["Chạy schema.sql", "Thành công, tạo 14 bảng, 4 hàm và 1 trigger"],
         ["Chạy seed.sql", "Thành công, nạp dữ liệu toà nhà IFC One Saigon và ba văn phòng"],
         ["Trigger suy cao độ từ dải tầng",
          "Alpha 23,60–42,20 m · Beta 93,35–116,60 m · Gamma 163,10–191,00 m, "

@@ -7,7 +7,7 @@ không còn là mã "trên giấy".
 
 | Hạng mục | Kết quả |
 |---|---|
-| `schema.sql` | Chạy hết, thoát mã 0 — tạo **15 bảng**, 4 hàm, 1 trigger |
+| `schema.sql` | Chạy hết, thoát mã 0 — tạo **14 bảng**, 4 hàm, 1 trigger |
 | `seed.sql` | Chạy hết, thoát mã 0 |
 | Trigger suy cao độ | Alpha 23,60→42,20 · Beta 93,35→116,60 · Gamma 163,10→191,00 m — khớp đúng công thức trong báo cáo |
 | `kiem_tra_bao_ham()` | TH1 đúng tầng → `HOP_LE` · TH2 sai tầng → `NGHI_NGO` · TH3 ngoài toà nhà → `NGOAI_VUNG` |
