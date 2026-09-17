@@ -1,0 +1,16 @@
+# Thư viện cài bằng npm — cài lại bằng `npm install`
+node_modules/
+package-lock.json
+
+# Tệp tạm do các script sinh ra (HTML trung gian, ảnh chụp màn hình gỡ lỗi)
+scratch/
+*.log
+
+# Bài thực hành 3D Bưu điện Trung tâm Sài Gòn — tạm chưa đưa lên
+lab-3d-buudien/
+
+# Hệ điều hành / trình soạn thảo
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

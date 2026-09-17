@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Chấm công định vị 3D — mô hình MAP</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.29/"></script>
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; width: 100%;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif; }
+    #viewDiv { position: absolute; inset: 0; }
+
+    .panel { position: absolute; top: 12px; left: 12px; width: 330px; z-index: 10;
+      background: rgba(255,255,255,.95); border-radius: 10px;
+      box-shadow: 0 6px 22px rgba(0,0,0,.22);
+      max-height: calc(100% - 24px); display: flex; flex-direction: column; overflow: hidden; }
+    .panel header { background: #1f6feb; color: #fff; padding: 11px 14px; }
+    .panel header h1 { margin: 0; font-size: 15px; font-weight: 700; }
+    .panel header p { margin: 3px 0 0; font-size: 11px; opacity: .9; }
+    .body { padding: 12px 14px 14px; overflow: auto; }
+
+    .grp { margin-bottom: 13px; }
+    .grp > label { display: block; font-size: 10.5px; font-weight: 700; letter-spacing: .5px;
+      text-transform: uppercase; color: #57606a; margin-bottom: 5px; }
+    select, input[type=number] { width: 100%; box-sizing: border-box; padding: 6px 8px;
+      border: 1px solid #d0d7de; border-radius: 6px; font-size: 13px; background: #fff; }
+    input[type=range] { width: 100%; accent-color: #1f6feb; }
+    .two { display: flex; gap: 8px; } .two > div { flex: 1; }
+    .btn { width: 100%; padding: 9px; font-size: 13px; font-weight: 600; cursor: pointer;
+      border: 0; border-radius: 6px; background: #1f6feb; color: #fff; margin-bottom: 6px; }
+    .btn.alt { background: #fff; color: #24292f; border: 1px solid #d0d7de; }
+    .btn.armed { background: #bf3989; }
+
+    .verdict { border-radius: 8px; padding: 10px 12px; font-size: 13px; margin-bottom: 12px;
+      display: none; border-left: 5px solid; }
+    .verdict.on { display: block; }
+    .verdict b { display: block; font-size: 15px; margin-bottom: 4px; }
+    .v-ok   { background: #e6f6ec; border-color: #1a7f37; color: #0f5323; }
+    .v-warn { background: #fff4e0; border-color: #d4a72c; color: #7a4f01; }
+    .v-bad  { background: #ffebe9; border-color: #cf222e; color: #82071e; }
+    .verdict small { display: block; margin-top: 5px; opacity: .85; font-size: 11.5px; }
+
+    .cmp { background: #f6f8fa; border: 1px dashed #d0d7de; border-radius: 6px;
+      padding: 8px 10px; font-size: 11.5px; color: #57606a; margin-bottom: 12px; }
+    .cmp b { color: #cf222e; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    th, td { text-align: left; padding: 4px 5px; border-bottom: 1px solid #eaeef2; }
+    th { color: #57606a; font-weight: 600; }
+    .tag { padding: 1px 6px; border-radius: 9px; font-size: 10px; font-weight: 700; }
+    .t-ok { background: #dafbe1; color: #0f5323; }
+    .t-warn { background: #fff1cc; color: #7a4f01; }
+    .t-bad { background: #ffd9d6; color: #82071e; }
+
+    .legend { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+    .legend li { display: flex; align-items: center; gap: 7px; margin: 3px 0; }
+    .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,.25); }
+    .note { font-size: 10.5px; color: #6e7781; line-height: 1.5;
+      border-top: 1px solid #eaeef2; padding-top: 9px; margin-bottom: 0; }
+  </style>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <div class="panel">
+    <header>
+      <h1>Chấm công định vị 3D</h1>
+      <p>Mô hình MAP — Khối chấm công phân tầng · IFC One Saigon</p>
+    </header>
+
+    <div class="body">
+      <div id="verdict" class="verdict"></div>
+      <div id="cmp" class="cmp" style="display:none"></div>
+
+      <div class="grp">
+        <label>Nhân viên</label>
+        <select id="nv"></select>
+      </div>
+
+      <div class="grp">
+        <label>Tầng đang đứng: <span id="tangVal">6</span> &nbsp;·&nbsp;
+          cao độ <span id="zVal">28,25</span> m</label>
+        <input type="range" id="tang" min="1" max="42" value="6" />
+      </div>
+
+      <div class="grp">
+        <label>Dung sai</label>
+        <div class="two">
+          <div>
+            <input type="number" id="dxy" value="25" min="0" step="5" />
+            <small style="font-size:10px;color:#6e7781">δxy ngang (m)</small>
+          </div>
+          <div>
+            <input type="number" id="dz" value="5" min="0" step="1" />
+            <small style="font-size:10px;color:#6e7781">δz đứng (m)</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="grp">
+        <label>Chấm công</label>
+        <button class="btn" id="btnSim">Mô phỏng — bấm lên bản đồ</button>
+        <button class="btn alt" id="btnGps">Dùng GPS thật của thiết bị</button>
+      </div>
+
+      <div class="grp">
+        <label>Chú giải khối</label>
+        <ul class="legend" id="legend"></ul>
+      </div>
+
+      <div class="grp">
+        <label>Lịch sử phiên này</label>
+        <table>
+          <thead><tr><th>Giờ</th><th>Tầng</th><th>Cách</th><th>Kết quả</th></tr></thead>
+          <tbody id="hist"><tr><td colspan="4" style="color:#8c959f">Chưa có bản ghi</td></tr></tbody>
+        </table>
+      </div>
+
+      <p class="note">
+        Footprint toà nhà lấy từ OpenStreetMap <code>way/306578560</code> (ODbL),
+        42 tầng / 195,3 m. Cao độ nền giả định 5 m, chiều cao tầng 4,65 m.<br />
+        Đồ án IE402 — Hệ thống thông tin địa lý 3 chiều.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    require([
+      "esri/Map", "esri/views/SceneView", "esri/layers/GraphicsLayer",
+      "esri/Graphic", "esri/geometry/Polygon", "esri/geometry/Point"
+    ], function (Map, SceneView, GraphicsLayer, Graphic, Polygon, Point) {
+
+      /* =================================================================
+         1. DỮ LIỆU  (khớp với db/seed.sql)
+         ================================================================= */
+      var TOA_NHA = {
+        ten: "IFC One Saigon",
+        cao_do_nen: 5,
+        so_tang: 42,
+        chieu_cao_tang: 4.65,
+        footprint: [
+          [106.705185, 10.770142], [106.705194, 10.770332], [106.705801, 10.770305],
+          [106.705794, 10.770111], [106.705830, 10.770065], [106.705790, 10.770017],
+          [106.705743, 10.769976], [106.705690, 10.769947], [106.705633, 10.769925],
+          [106.705574, 10.769908], [106.705512, 10.769902], [106.705453, 10.769906],
+          [106.705399, 10.769917], [106.705350, 10.769932], [106.705297, 10.769957],
+          [106.705259, 10.769982], [106.705285, 10.770017], [106.705300, 10.770138],
+          [106.705185, 10.770142]
+        ]
+      };
+
+      // Ba văn phòng ở ba dải tầng — cùng footprint, cùng lat/lon.
+      var VAN_PHONG = [
+        { id: 1, ten: "Alpha Tech",   tang_bat_dau: 5,  tang_ket_thuc: 8,  mau: [232, 98, 42] },
+        { id: 2, ten: "Beta Finance", tang_bat_dau: 20, tang_ket_thuc: 24, mau: [31, 111, 235] },
+        { id: 3, ten: "Gamma Media",  tang_bat_dau: 35, tang_ket_thuc: 40, mau: [130, 80, 223] }
+      ];
+
+      var NHAN_VIEN = [
+        { id: 1, ho_ten: "Nguyễn Văn An",  van_phong: 1 },
+        { id: 3, ho_ten: "Lê Minh Cường",  van_phong: 2 },
+        { id: 4, ho_ten: "Phạm Thu Dung",  van_phong: 3 }
+      ];
+
+      // z_min / z_max suy ra từ dải tầng — đúng công thức trong báo cáo mục 2.2.1
+      VAN_PHONG.forEach(function (v) {
+        v.z_min = TOA_NHA.cao_do_nen + (v.tang_bat_dau - 1) * TOA_NHA.chieu_cao_tang;
+        v.z_max = TOA_NHA.cao_do_nen + v.tang_ket_thuc * TOA_NHA.chieu_cao_tang;
+        v.da_giac_nen = TOA_NHA.footprint;
+      });
+
+      function caoDoCuaTang(tang) {
+        // cao độ của người đứng giữa tầng
+        return TOA_NHA.cao_do_nen + (tang - 0.5) * TOA_NHA.chieu_cao_tang;
+      }
+
+      /* =================================================================
+         2. THUẬT TOÁN KIỂM TRA BAO HÀM KHỐI  (mục 2.2.2)
+         ================================================================= */
+
+      // 2a. Điểm thuộc đa giác — ray casting
+      function diemTrongDaGiac(lon, lat, ring) {
+        var trong = false;
+        for (var i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+          var xi = ring[i][0], yi = ring[i][1];
+          var xj = ring[j][0], yj = ring[j][1];
+          var cat = (yi > lat) !== (yj > lat) &&
+                    lon < (xj - xi) * (lat - yi) / (yj - yi) + xi;
+          if (cat) { trong = !trong; }
+        }
+        return trong;
+      }
+
+      // 2b. Khoảng cách ngang từ điểm tới đa giác, tính bằng mét
+      //     (phép chiếu phẳng cục bộ — sai số không đáng kể ở quy mô một toà nhà)
+      function metTheoDo(lat) {
+        return { x: 111320 * Math.cos(lat * Math.PI / 180), y: 110540 };
+      }
+
+      function khoangCachToiDaGiac(lon, lat, ring) {
+        if (diemTrongDaGiac(lon, lat, ring)) { return 0; }
+        var k = metTheoDo(lat);
+        var px = lon * k.x, py = lat * k.y;
+        var min = Infinity;
+        for (var i = 0; i < ring.length - 1; i++) {
+          var ax = ring[i][0] * k.x,     ay = ring[i][1] * k.y;
+          var bx = ring[i + 1][0] * k.x, by = ring[i + 1][1] * k.y;
+          var dx = bx - ax, dy = by - ay;
+          var len2 = dx * dx + dy * dy;
+          var t = len2 === 0 ? 0 : ((px - ax) * dx + (py - ay) * dy) / len2;
+          t = Math.max(0, Math.min(1, t));
+          var cx = ax + t * dx, cy = ay + t * dy;
+          var d = Math.hypot(px - cx, py - cy);
+          if (d < min) { min = d; }
+        }
+        return min;
+      }
+
+      // 2c. Kiểm tra bao hàm khối MAP — trả về ba trạng thái
+      function kiemTraBaoHam(diem, khoi, dxy, dz) {
+        var d = khoangCachToiDaGiac(diem.lon, diem.lat, khoi.da_giac_nen);
+        var trongNgang = d <= dxy;
+        var trongDung = diem.z >= (khoi.z_min - dz) && diem.z <= (khoi.z_max + dz);
+
+        var lech = 0;
+        if (diem.z < khoi.z_min) { lech = diem.z - khoi.z_min; }
+        else if (diem.z > khoi.z_max) { lech = diem.z - khoi.z_max; }
+
+        var trangThai = !trongNgang ? "NGOAI_VUNG" : (trongDung ? "HOP_LE" : "NGHI_NGO");
+        return { trangThai: trangThai, khoangCach: d, lechCaoDo: lech, trongNgang: trongNgang };
+      }
+
+      /* =================================================================
+         3. BẢN ĐỒ 3D
+         ================================================================= */
+      var lopToaNha = new GraphicsLayer({
+        elevationInfo: { mode: "absolute-height" }, title: "Toà nhà"
+      });
+      var lopKhoi = new GraphicsLayer({
+        elevationInfo: { mode: "absolute-height" }, title: "Khối chấm công (MAP)"
+      });
+      var lopDiem = new GraphicsLayer({
+        elevationInfo: { mode: "absolute-height" }, title: "Bản ghi chấm công"
+      });
+
+      var map = new Map({
+        basemap: "topo-vector",
+        ground: "world-elevation",
+        layers: [lopToaNha, lopKhoi, lopDiem]
+      });
+
+      var view = new SceneView({
+        container: "viewDiv",
+        map: map,
+        camera: {
+          position: [106.70490, 10.76840, 260],
+          heading: 20,
+          tilt: 72
+        }
+      });
+      view.ui.move("zoom", "top-right");
+
+      function ringZ(ring, z) {
+        return ring.map(function (p) { return [p[0], p[1], z]; });
+      }
+
+      // Khối bao của toà nhà — bán trong suốt để nhìn xuyên
+      lopToaNha.add(new Graphic({
+        geometry: new Polygon({
+          rings: [ringZ(TOA_NHA.footprint, TOA_NHA.cao_do_nen)],
+          spatialReference: { wkid: 4326 }
+        }),
+        symbol: {
+          type: "polygon-3d",
+          symbolLayers: [{
+            type: "extrude",
+            size: TOA_NHA.so_tang * TOA_NHA.chieu_cao_tang,
+            material: { color: [190, 195, 200, 0.25] },
+            edges: { type: "solid", size: 1, color: [90, 95, 100, 0.8] }
+          }]
+        },
+        popupTemplate: { title: TOA_NHA.ten, content: TOA_NHA.so_tang + " tầng · 195,3 m" }
+      }));
+
+      // Ba khối MAP
+      VAN_PHONG.forEach(function (v) {
+        lopKhoi.add(new Graphic({
+          geometry: new Polygon({
+            rings: [ringZ(v.da_giac_nen, v.z_min)],
+            spatialReference: { wkid: 4326 }
+          }),
+          symbol: {
+            type: "polygon-3d",
+            symbolLayers: [{
+              type: "extrude",
+              size: v.z_max - v.z_min,
+              material: { color: v.mau.concat([0.55]) },
+              edges: { type: "solid", size: 1.2, color: v.mau.concat([1]) }
+            }]
+          },
+          popupTemplate: {
+            title: v.ten,
+            content: "Tầng " + v.tang_bat_dau + "–" + v.tang_ket_thuc +
+                     "<br/>z_min = " + v.z_min.toFixed(2) + " m" +
+                     "<br/>z_max = " + v.z_max.toFixed(2) + " m"
+          }
+        }));
+      });
+
+      /* =================================================================
+         4. GIAO DIỆN
+         ================================================================= */
+      var elNv = document.getElementById("nv");
+      NHAN_VIEN.forEach(function (n) {
+        var vp = VAN_PHONG.find(function (v) { return v.id === n.van_phong; });
+        var o = document.createElement("option");
+        o.value = n.id;
+        o.textContent = n.ho_ten + " — " + vp.ten + " (T" + vp.tang_bat_dau + "–" + vp.tang_ket_thuc + ")";
+        elNv.appendChild(o);
+      });
+
+      document.getElementById("legend").innerHTML = VAN_PHONG.map(function (v) {
+        var c = v.mau;
+        return '<li><i class="sw" style="background:rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',.7)"></i>' +
+               v.ten + ' · tầng ' + v.tang_bat_dau + '–' + v.tang_ket_thuc +
+               ' (' + v.z_min.toFixed(1) + '–' + v.z_max.toFixed(1) + ' m)</li>';
+      }).join("");
+
+      var elTang = document.getElementById("tang");
+      function capNhatTang() {
+        var t = parseInt(elTang.value, 10);
+        document.getElementById("tangVal").textContent = t;
+        document.getElementById("zVal").textContent = caoDoCuaTang(t).toFixed(2).replace(".", ",");
+      }
+      elTang.addEventListener("input", capNhatTang);
+      capNhatTang();
+
+      var dangChoBam = false;
+      var btnSim = document.getElementById("btnSim");
+      btnSim.addEventListener("click", function () {
+        dangChoBam = !dangChoBam;
+        btnSim.classList.toggle("armed", dangChoBam);
+        btnSim.textContent = dangChoBam ? "Đang chờ… bấm lên bản đồ" : "Mô phỏng — bấm lên bản đồ";
+      });
+
+      view.on("click", function (event) {
+        if (!dangChoBam || !event.mapPoint) { return; }
+        dangChoBam = false;
+        btnSim.classList.remove("armed");
+        btnSim.textContent = "Mô phỏng — bấm lên bản đồ";
+        chamCong({
+          lon: event.mapPoint.longitude,
+          lat: event.mapPoint.latitude,
+          z: caoDoCuaTang(parseInt(elTang.value, 10)),
+          doChinhXac: 8,
+          nguon: "MÔ PHỎNG"
+        });
+      });
+
+      document.getElementById("btnGps").addEventListener("click", function () {
+        if (!navigator.geolocation) {
+          alert("Trình duyệt không hỗ trợ định vị.");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(function (pos) {
+          var c = pos.coords;
+          // Cao độ GPS trong nhà thường null hoặc sai số rất lớn ->
+          // rơi về tầng người dùng khai báo (mục 4.2 của báo cáo).
+          var coCaoDo = c.altitude !== null && c.altitudeAccuracy !== null
+                        && c.altitudeAccuracy < 15;
+          chamCong({
+            lon: c.longitude,
+            lat: c.latitude,
+            z: coCaoDo ? c.altitude : caoDoCuaTang(parseInt(elTang.value, 10)),
+            doChinhXac: c.accuracy,
+            nguon: coCaoDo ? "GPS (cao độ đo được)" : "GPS (cao độ khai báo)"
+          });
+        }, function (err) {
+          alert("Không lấy được vị trí: " + err.message +
+                "\n(Geolocation chỉ chạy trên HTTPS hoặc localhost)");
+        }, { enableHighAccuracy: true, timeout: 10000 });
+      });
+
+      /* =================================================================
+         5. XỬ LÝ MỘT LẦN CHẤM CÔNG
+         ================================================================= */
+      var lichSu = [];
+
+      function chamCong(diem) {
+        var maNv = parseInt(elNv.value, 10);
+        var nv = NHAN_VIEN.find(function (n) { return n.id === maNv; });
+        var khoi = VAN_PHONG.find(function (v) { return v.id === nv.van_phong; });
+        var dxy = parseFloat(document.getElementById("dxy").value);
+        var dz = parseFloat(document.getElementById("dz").value);
+
+        var kq = kiemTraBaoHam(diem, khoi, dxy, dz);
+
+        veDiem(diem, kq.trangThai);
+        hienKetQua(nv, khoi, diem, kq, dxy, dz);
+        ghiLichSu(diem, kq);
+      }
+
+      function veDiem(diem, trangThai) {
+        var mau = trangThai === "HOP_LE" ? [26, 127, 55]
+                : trangThai === "NGHI_NGO" ? [212, 167, 44] : [207, 34, 46];
+        lopDiem.add(new Graphic({
+          geometry: new Point({
+            longitude: diem.lon, latitude: diem.lat, z: diem.z,
+            spatialReference: { wkid: 4326 }
+          }),
+          symbol: {
+            type: "point-3d",
+            symbolLayers: [{
+              type: "object", resource: { primitive: "sphere" },
+              material: { color: mau }, width: 6, height: 6, depth: 6
+            }]
+          }
+        }));
+        view.goTo({ target: [diem.lon, diem.lat, diem.z], scale: 1500 }, { duration: 800 })
+            .catch(function () {});
+      }
+
+      function hienKetQua(nv, khoi, diem, kq, dxy, dz) {
+        var el = document.getElementById("verdict");
+        var lop = { HOP_LE: "v-ok", NGHI_NGO: "v-warn", NGOAI_VUNG: "v-bad" }[kq.trangThai];
+        var tieuDe = {
+          HOP_LE: "HỢP LỆ",
+          NGHI_NGO: "NGHI NGỜ — đúng toà nhà, sai tầng",
+          NGOAI_VUNG: "NGOÀI VÙNG"
+        }[kq.trangThai];
+
+        var chiTiet =
+          "Khoảng cách ngang tới khối: <b>" + kq.khoangCach.toFixed(1) + " m</b> (δxy = " + dxy + " m)<br/>" +
+          "Cao độ điểm: <b>" + diem.z.toFixed(2) + " m</b> · dải khối " +
+          khoi.z_min.toFixed(2) + "–" + khoi.z_max.toFixed(2) + " m (δz = " + dz + " m)";
+        if (kq.lechCaoDo !== 0) {
+          chiTiet += "<br/>Lệch cao độ: <b>" + (kq.lechCaoDo > 0 ? "+" : "") +
+                     kq.lechCaoDo.toFixed(2) + " m</b> ≈ " +
+                     Math.abs(kq.lechCaoDo / TOA_NHA.chieu_cao_tang).toFixed(1) + " tầng";
+        }
+
+        el.className = "verdict on " + lop;
+        el.innerHTML = "<b>" + tieuDe + "</b>" + chiTiet +
+          "<small>" + nv.ho_ten + " · " + khoi.ten + " · nguồn: " + diem.nguon + "</small>";
+
+        // So sánh với hàng rào 2D — điểm mấu chốt của đồ án
+        var cmp = document.getElementById("cmp");
+        cmp.style.display = "block";
+        if (kq.trangThai === "NGHI_NGO") {
+          cmp.innerHTML = "Hàng rào <b>2D</b> sẽ kết luận <b>HỢP LỆ</b> cho lần chấm công này, " +
+            "vì toạ độ ngang nằm trong vùng. Chỉ mô hình 3D mới phát hiện sai tầng.";
+        } else {
+          cmp.innerHTML = "Hàng rào 2D cho cùng kết luận (" +
+            (kq.trongNgang ? "trong vùng" : "ngoài vùng") + ") trong trường hợp này.";
+        }
+      }
+
+      function ghiLichSu(diem, kq) {
+        var gio = new Date().toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+        var tang = Math.round((diem.z - TOA_NHA.cao_do_nen) / TOA_NHA.chieu_cao_tang + 0.5);
+        var tag = { HOP_LE: "t-ok", NGHI_NGO: "t-warn", NGOAI_VUNG: "t-bad" }[kq.trangThai];
+        lichSu.unshift(
+          "<tr><td>" + gio + "</td><td>" + tang + "</td><td>" +
+          kq.khoangCach.toFixed(0) + " m</td><td><span class='tag " + tag + "'>" +
+          kq.trangThai + "</span></td></tr>"
+        );
+        document.getElementById("hist").innerHTML = lichSu.slice(0, 12).join("");
+      }
+
+      // tiện debug trong console
+      window.app = { view: view, VAN_PHONG: VAN_PHONG, kiemTraBaoHam: kiemTraBaoHam, chamCong: chamCong };
+    });
+  </script>
+</body>
+</html>

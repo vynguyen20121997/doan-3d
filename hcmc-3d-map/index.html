@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Bản đồ địa giới hành chính mới TP. Hồ Chí Minh (3D)</title>
+
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.29/"></script>
+
+  <style>
+    html, body { padding: 0; margin: 0; height: 100%; width: 100%;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif; }
+    #viewDiv { position: absolute; inset: 0; }
+
+    .panel {
+      position: absolute; top: 14px; left: 14px; width: 312px; z-index: 10;
+      background: rgba(255,255,255,.94); border-radius: 10px;
+      box-shadow: 0 6px 22px rgba(0,0,0,.22); overflow: hidden;
+      max-height: calc(100% - 28px); display: flex; flex-direction: column;
+    }
+    .panel header { background: #e8622a; color: #fff; padding: 12px 14px; }
+    .panel header h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: .2px; }
+    .panel header p { margin: 4px 0 0; font-size: 11.5px; opacity: .92; }
+    .panel .body { padding: 12px 14px 14px; overflow: auto; }
+
+    .grp { margin-bottom: 14px; }
+    .grp > label { display: block; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .6px; color: #4b8f89; margin-bottom: 6px; }
+    select, input[type=text] { width: 100%; box-sizing: border-box; padding: 6px 8px;
+      border: 1px solid #cfd8dc; border-radius: 6px; font-size: 13px; background: #fff; }
+    input[type=range] { width: 100%; accent-color: #e8622a; }
+    .row { display: flex; gap: 8px; }
+    .row > * { flex: 1; }
+    .btn { padding: 7px 8px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+      border: 1px solid #cfd8dc; border-radius: 6px; background: #fff; color: #37474f; }
+    .btn.active { background: #e8622a; border-color: #e8622a; color: #fff; }
+
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .stat { background: #f2f6f6; border-radius: 6px; padding: 7px 8px; text-align: center; }
+    .stat b { display: block; font-size: 16px; color: #e8622a; line-height: 1.15; }
+    .stat span { font-size: 10px; color: #607d8b; }
+
+    .legend { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+    .legend li { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    .sw { width: 15px; height: 15px; border-radius: 3px; border: 1px solid rgba(0,0,0,.25); }
+    .ramp { height: 12px; border-radius: 3px; }
+    .ramp-lbl { display: flex; justify-content: space-between; font-size: 10.5px; color: #607d8b; margin-top: 3px; }
+
+    .hits { list-style: none; margin: 6px 0 0; padding: 0; max-height: 168px; overflow: auto;
+      border: 1px solid #eceff1; border-radius: 6px; }
+    .hits:empty { display: none; }
+    .hits li { padding: 6px 9px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid #f1f4f5; }
+    .hits li:last-child { border-bottom: 0; }
+    .hits li:hover { background: #fdf1ec; }
+    .hits li small { color: #78909c; }
+
+    .src { font-size: 10.5px; color: #78909c; line-height: 1.5;
+      border-top: 1px solid #eceff1; padding-top: 9px; margin-bottom: 0; }
+    .src a { color: #4b8f89; }
+
+    #loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,.88); z-index: 20; font-size: 14px; color: #546e7a; text-align: center; }
+  </style>
+</head>
+
+<body>
+  <div id="viewDiv"></div>
+
+  <div class="panel">
+    <header>
+      <h1>TP. Hồ Chí Minh &mdash; địa giới mới</h1>
+      <p>168 đơn vị hành chính cấp xã (từ 01/07/2025) &middot; ArcGIS SceneView 3D</p>
+    </header>
+
+    <div class="body">
+      <div class="grp">
+        <label>Thống kê</label>
+        <div class="stats">
+          <div class="stat"><b id="s-total">&ndash;</b><span>đơn vị</span></div>
+          <div class="stat"><b id="s-ward">&ndash;</b><span>phường</span></div>
+          <div class="stat"><b id="s-comm">&ndash;</b><span>xã / đặc khu</span></div>
+        </div>
+      </div>
+
+      <div class="grp">
+        <label>Chế độ hiển thị (3D)</label>
+        <select id="mode">
+          <option value="type">Loại đơn vị (khối đều)</option>
+          <option value="area_km2">Diện tích (km&sup2;)</option>
+          <option value="population">Dân số (người)</option>
+          <option value="density">Mật độ dân số (người/km&sup2;)</option>
+        </select>
+      </div>
+
+      <div class="grp">
+        <label>Độ cao khối <span id="exVal">1.0&times;</span></label>
+        <input type="range" id="ex" min="0.2" max="4" step="0.1" value="1" />
+      </div>
+
+      <div class="grp">
+        <label>Chế độ xem</label>
+        <div class="row">
+          <button class="btn active" id="b3d">3D</button>
+          <button class="btn" id="b2d">2D</button>
+          <button class="btn" id="bhome">Toàn cảnh</button>
+        </div>
+      </div>
+
+      <div class="grp">
+        <label>Tìm phường / xã</label>
+        <input type="text" id="q" placeholder="ví dụ: Bến Thành, Vũng Tàu, Côn Đảo&hellip;" autocomplete="off" />
+        <ul class="hits" id="hits"></ul>
+      </div>
+
+      <div class="grp">
+        <label>Chú giải</label>
+        <div id="legend"></div>
+      </div>
+
+      <p class="src">
+        Ranh giới: <a href="https://www.openstreetmap.org/relation/1973756" target="_blank">OpenStreetMap</a>
+        (ODbL) &mdash; trích xuất qua Overpass API, đơn giản hoá bằng mapshaper.<br />
+        Nền &amp; địa hình: ArcGIS <em>topo-vector</em> + <em>world-elevation</em>.<br />
+        Bài tập môn Hệ thống thông tin địa lý 3 chiều &mdash; theo mẫu ArcGIS JS Lab1 &amp; Lab2.
+      </p>
+    </div>
+  </div>
+
+  <div id="loading">Đang tải dữ liệu địa giới&hellip;</div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/SceneView",
+      "esri/views/MapView",
+      "esri/layers/GeoJSONLayer",
+      "esri/widgets/Legend",
+      "esri/widgets/Expand",
+      "esri/widgets/BasemapToggle",
+      "esri/widgets/LayerList",
+      "esri/geometry/Extent"
+    ], function (Map, SceneView, MapView, GeoJSONLayer, Legend, Expand,
+                 BasemapToggle, LayerList, Extent) {
+
+      // ---------- bảng màu & cấu hình ----------
+      var TYPE_COLORS = {
+        "Phường":  [232, 98, 42, 0.85],
+        "Xã":      [75, 143, 137, 0.85],
+        "Đặc khu": [91, 92, 168, 0.90]
+      };
+      var RAMP = ["#fde9dd", "#f9c39c", "#f19259", "#e05f22", "#a63c0d"];
+      var NO_DATA = [176, 190, 197, 0.8];   // xám: đơn vị chưa có dữ liệu
+      var FLAT_HEIGHT = 900;                                  // mét, chế độ "loại đơn vị"
+      var HEIGHTS = [300, 1400, 3000, 5500, 9000];            // mét, 5 chặng
+      var UNITS = { area_km2: "km²", population: "người", density: "người/km²" };
+
+      var mode = "type", exaggeration = 1, stats = null, features = [];
+
+      // nhãn: SceneView dùng label-3d, MapView dùng text -> phải đổi khi chuyển view,
+      // nếu để label-3d trong MapView thì layerView 2D treo ở trạng thái updating
+      var LABEL_3D = {
+        labelExpressionInfo: { expression: "$feature.short_name" },
+        symbol: {
+          type: "label-3d",
+          symbolLayers: [{
+            type: "text",
+            material: { color: [38, 38, 38] },
+            halo: { color: [255, 255, 255, 0.9], size: 1.4 },
+            size: 10
+          }]
+        },
+        labelPlacement: "above-center",
+        minScale: 320000
+      };
+
+      var LABEL_2D = {
+        labelExpressionInfo: { expression: "$feature.short_name" },
+        symbol: {
+          type: "text",
+          color: [38, 38, 38],
+          haloColor: [255, 255, 255, 0.9],
+          haloSize: 1.2,
+          font: { size: 9.5 }
+        },
+        labelPlacement: "always-horizontal",
+        minScale: 320000
+      };
+
+      var OUTLINE_3D = {
+        type: "simple",
+        symbol: {
+          type: "polygon-3d",
+          symbolLayers: [{ type: "line", size: 3, material: { color: [30, 30, 30, 0.9] } }]
+        }
+      };
+
+      // ---------- lớp dữ liệu ----------
+      var wards = new GeoJSONLayer({
+        url: "./data/hcmc-wards.geojson",
+        title: "Đơn vị hành chính cấp xã (2025)",
+        outFields: ["*"],
+        objectIdField: "id",
+        fields: [
+          { name: "id",         type: "oid" },
+          { name: "name",       type: "string" },
+          { name: "short_name", type: "string" },
+          { name: "unit_type",  type: "string" },
+          { name: "population", type: "double" },
+          { name: "area_km2",   type: "double" },
+          { name: "density",    type: "double" },
+          { name: "osm_id",     type: "string" }
+        ],
+        popupTemplate: {
+          title: "{name}",
+          content: [{
+            type: "fields",
+            fieldInfos: [
+              { fieldName: "unit_type", label: "Loại đơn vị" },
+              { fieldName: "area_km2", label: "Diện tích (km²)",
+                format: { digitSeparator: true, places: 2 } },
+              { fieldName: "population", label: "Dân số (người)",
+                format: { digitSeparator: true, places: 0 } },
+              { fieldName: "density", label: "Mật độ (người/km²)",
+                format: { digitSeparator: true, places: 0 } },
+              { fieldName: "osm_id", label: "Nguồn OSM" }
+            ]
+          }]
+        },
+        labelsVisible: true,
+        labelingInfo: [LABEL_3D]
+      });
+
+      var outline = new GeoJSONLayer({
+        url: "./data/hcmc-outline.geojson",
+        title: "Ranh giới TP. Hồ Chí Minh",
+        objectIdField: "id",
+        fields: [
+          { name: "id", type: "oid" },
+          { name: "name", type: "string" }
+        ],
+        renderer: OUTLINE_3D,
+        elevationInfo: { mode: "on-the-ground" },
+        popupEnabled: false,
+        legendEnabled: false
+      });
+
+      // ---------- renderer 3D (extrude) ----------
+      function extrudeSymbol(color) {
+        return {
+          type: "polygon-3d",
+          symbolLayers: [{
+            type: "extrude",
+            size: FLAT_HEIGHT,
+            material: { color: color },
+            edges: { type: "solid", size: 0.6, color: [70, 70, 70, 0.5] }
+          }]
+        };
+      }
+
+      function makeRenderer() {
+        if (mode === "type") {
+          wards.renderer = {
+            type: "unique-value",
+            field: "unit_type",
+            legendOptions: { title: "Loại đơn vị" },
+            defaultSymbol: extrudeSymbol(NO_DATA),
+            uniqueValueInfos: Object.keys(TYPE_COLORS).map(function (k) {
+              return { value: k, label: k, symbol: extrudeSymbol(TYPE_COLORS[k]) };
+            }),
+            visualVariables: [{
+              type: "size",
+              valueExpression: "1",
+              stops: [{ value: 1, size: FLAT_HEIGHT * exaggeration }]
+            }]
+          };
+          return;
+        }
+        // chế độ số: renderer simple + visualVariables -> đơn vị thiếu dữ liệu giữ màu xám
+        var brk = stats[mode].breaks;
+        wards.renderer = {
+          type: "simple",
+          symbol: extrudeSymbol(NO_DATA),
+          visualVariables: [
+            {
+              type: "size",
+              field: mode,
+              legendOptions: { title: "Chiều cao khối" },
+              stops: brk.map(function (v, i) {
+                return { value: v, size: HEIGHTS[i] * exaggeration };
+              })
+            },
+            {
+              type: "color",
+              field: mode,
+              legendOptions: { title: UNITS[mode] },
+              stops: brk.map(function (v, i) { return { value: v, color: RAMP[i] }; })
+            }
+          ]
+        };
+      }
+
+      // MapView không vẽ được symbol polygon-3d/extrude -> cần renderer 2D riêng
+      function fillSymbol(color) {
+        return {
+          type: "simple-fill",
+          color: color,
+          outline: { color: [255, 255, 255, 0.65], width: 0.5 }
+        };
+      }
+
+      function make2DRenderer() {
+        if (mode === "type") {
+          wards.renderer = {
+            type: "unique-value",
+            field: "unit_type",
+            legendOptions: { title: "Loại đơn vị" },
+            defaultSymbol: fillSymbol(NO_DATA),
+            uniqueValueInfos: Object.keys(TYPE_COLORS).map(function (k) {
+              return { value: k, label: k, symbol: fillSymbol(TYPE_COLORS[k]) };
+            })
+          };
+          return;
+        }
+        wards.renderer = {
+          type: "simple",
+          symbol: fillSymbol(NO_DATA),
+          visualVariables: [{
+            type: "color",
+            field: mode,
+            legendOptions: { title: UNITS[mode] },
+            stops: stats[mode].breaks.map(function (v, i) {
+              return { value: v, color: RAMP[i] };
+            })
+          }]
+        };
+      }
+
+      function applyRenderer() {
+        if (!stats) { return; }
+        var is2d = activeView === view2d;
+        if (is2d) { make2DRenderer(); } else { makeRenderer(); }
+        wards.labelingInfo = [is2d ? LABEL_2D : LABEL_3D];
+        outline.renderer = activeView === view2d
+          ? {
+              type: "simple",
+              symbol: {
+                type: "simple-fill",
+                color: [0, 0, 0, 0],
+                outline: { color: [30, 30, 30, 0.9], width: 2 }
+              }
+            }
+          : OUTLINE_3D;
+      }
+
+      // ---------- map + 2 view ----------
+      var map = new Map({
+        basemap: "topo-vector",
+        ground: "world-elevation",
+        layers: [wards, outline]
+      });
+
+      // phần đất liền của TP.HCM mới (không tính đặc khu Côn Đảo ở ngoài khơi)
+      var MAINLAND = new Extent({
+        xmin: 106.28, ymin: 10.22, xmax: 107.22, ymax: 11.52,
+        spatialReference: { wkid: 4326 }
+      });
+      var HOME_3D = { target: MAINLAND, heading: 0, tilt: 55 };
+      var HOME_2D = { target: MAINLAND };
+
+      var view3d = new SceneView({
+        container: "viewDiv",
+        map: map,
+        camera: { position: [106.75, 9.55, 175000], heading: 0, tilt: 55 },
+        environment: {
+          atmosphere: { quality: "high" },
+          lighting: { date: new Date("2025-07-01T09:00:00+07:00"), directShadowsEnabled: true }
+        }
+      });
+
+      var view2d = new MapView({
+        map: map,
+        extent: MAINLAND,
+        constraints: { rotationEnabled: false }
+      });
+
+      var activeView = view3d;
+
+      // tiện cho việc debug trong console: hcmc.view3d, hcmc.wards, ...
+      window.hcmc = { map: map, view3d: view3d, view2d: view2d, wards: wards, outline: outline };
+
+      view3d.ui.move("zoom", "top-right");
+      view3d.ui.add(new Expand({
+        view: view3d, expandTooltip: "Chú giải",
+        content: new Legend({ view: view3d })
+      }), "top-right");
+      view3d.ui.add(new Expand({
+        view: view3d, expandTooltip: "Lớp dữ liệu",
+        content: new LayerList({ view: view3d })
+      }), "top-right");
+      view3d.ui.add(new BasemapToggle({ view: view3d, nextBasemap: "hybrid" }), "bottom-right");
+
+      // ---------- nạp dữ liệu, tính chặng phân vị ----------
+      function quantileBreaks(field) {
+        var vals = features
+          .map(function (a) { return a[field]; })
+          .filter(function (v) { return v != null && v > 0; })
+          .sort(function (a, b) { return a - b; });
+        function q(p) { return vals[Math.min(vals.length - 1, Math.round(p * (vals.length - 1)))]; }
+        return {
+          breaks: [q(0.02), q(0.3), q(0.6), q(0.85), q(0.99)],
+          min: vals[0],
+          max: vals[vals.length - 1]
+        };
+      }
+
+      wards.when(function () {
+        return wards.queryFeatures({ where: "1=1", outFields: ["*"], returnGeometry: false });
+      }).then(function (res) {
+        features = res.features.map(function (f) { return f.attributes; });
+
+        stats = {
+          area_km2: quantileBreaks("area_km2"),
+          population: quantileBreaks("population"),
+          density: quantileBreaks("density")
+        };
+
+        var total = features.length;
+        var nWard = features.filter(function (a) { return a.unit_type === "Phường"; }).length;
+        document.getElementById("s-total").textContent = total;
+        document.getElementById("s-ward").textContent = nWard;
+        document.getElementById("s-comm").textContent = total - nWard;
+
+        applyRenderer();
+        renderLegend();
+        var el = document.getElementById("loading");
+        if (el) { el.remove(); }
+        view3d.goTo(HOME_3D, { duration: 1600 });
+      }).catch(function (err) {
+        document.getElementById("loading").innerHTML =
+          "Không tải được <code>data/hcmc-wards.geojson</code>.<br />" +
+          "Hãy mở trang qua HTTP server (xem README.md).";
+        console.error(err);
+      });
+
+      // ---------- chú giải trong panel ----------
+      function fmt(v) { return v == null ? "–" : Math.round(v).toLocaleString("vi-VN"); }
+
+      function renderLegend() {
+        var el = document.getElementById("legend");
+        if (mode === "type") {
+          el.innerHTML = '<ul class="legend">' + Object.keys(TYPE_COLORS).map(function (k) {
+            var c = TYPE_COLORS[k];
+            return '<li><i class="sw" style="background:rgba(' +
+              c[0] + ',' + c[1] + ',' + c[2] + ',' + c[3] + ')"></i>' + k + '</li>';
+          }).join("") + '</ul>';
+          return;
+        }
+        var s = stats[mode];
+        var missing = features.filter(function (a) { return !a[mode]; }).length;
+        el.innerHTML =
+          '<div class="ramp" style="background:linear-gradient(90deg,' + RAMP.join(",") + ')"></div>' +
+          '<div class="ramp-lbl"><span>' + fmt(s.min) + '</span><span>' + UNITS[mode] +
+          '</span><span>' + fmt(s.max) + '</span></div>' +
+          (missing
+            ? '<div class="ramp-lbl">' + missing + ' đơn vị chưa có dữ liệu &rarr; màu xám, khối thấp</div>'
+            : '');
+      }
+
+      // ---------- điều khiển ----------
+      document.getElementById("mode").addEventListener("change", function (e) {
+        mode = e.target.value;
+        applyRenderer();
+        renderLegend();
+      });
+
+      var ex = document.getElementById("ex");
+      ex.addEventListener("input", function () {
+        exaggeration = parseFloat(ex.value);
+        document.getElementById("exVal").textContent = exaggeration.toFixed(1) + "×";
+        applyRenderer();
+      });
+
+      function switchTo(is3d) {
+        var from = is3d ? view2d : view3d;
+        var to = is3d ? view3d : view2d;
+        // dùng extent (không dùng viewpoint) để camera nghiêng của SceneView
+        // không làm lệch khung nhìn khi đổi sang MapView
+        var ext = from.extent ? from.extent.clone() : null;
+        from.container = null;
+        to.container = "viewDiv";
+        if (ext) {
+          to.when(function () { to.goTo({ target: ext }, { animate: false }); });
+        }
+        activeView = to;
+        applyRenderer();
+        document.getElementById("b3d").classList.toggle("active", is3d);
+        document.getElementById("b2d").classList.toggle("active", !is3d);
+      }
+      document.getElementById("b3d").addEventListener("click", function () { switchTo(true); });
+      document.getElementById("b2d").addEventListener("click", function () { switchTo(false); });
+      document.getElementById("bhome").addEventListener("click", function () {
+        activeView.goTo(activeView === view3d ? HOME_3D : HOME_2D, { duration: 1400 });
+      });
+
+      // ---------- tìm kiếm ----------
+      var q = document.getElementById("q");
+      var hits = document.getElementById("hits");
+
+      q.addEventListener("input", function () {
+        var t = q.value.trim().toLowerCase();
+        hits.innerHTML = "";
+        if (t.length < 2) { return; }
+        features
+          .filter(function (a) { return (a.name || "").toLowerCase().indexOf(t) >= 0; })
+          .slice(0, 20)
+          .forEach(function (a) {
+            var li = document.createElement("li");
+            li.innerHTML = a.name + " <small>&middot; " + a.area_km2 + " km²</small>";
+            li.addEventListener("click", function () { zoomTo(a); });
+            hits.appendChild(li);
+          });
+      });
+
+      function zoomTo(attrs) {
+        wards.queryFeatures({
+          objectIds: [attrs.id], outFields: ["*"], returnGeometry: true
+        }).then(function (res) {
+          var f = res.features[0];
+          if (!f) { return; }
+          var ext = f.geometry.extent;
+          var target;
+          if (activeView === view3d) {
+            // khối extrude cao tới ~9 km: nới extent đủ rộng để camera không nằm trong khối
+            var maxH = (mode === "type" ? FLAT_HEIGHT : HEIGHTS[HEIGHTS.length - 1]) * exaggeration;
+            var widthM = Math.max(ext.width * 111320, 500);
+            var factor = Math.min(12, Math.max(2.5, maxH * 1.8 / widthM));
+            target = { target: ext.clone().expand(factor), heading: 0, tilt: 38 };
+          } else {
+            target = { target: ext.clone().expand(2.5) };
+          }
+          activeView.goTo(target, { duration: 1200 }).then(function () {
+            activeView.openPopup({
+              features: [f],
+              location: f.geometry.centroid || f.geometry.extent.center
+            });
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>
