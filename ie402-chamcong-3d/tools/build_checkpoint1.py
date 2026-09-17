@@ -17,6 +17,8 @@ from docx.oxml import OxmlElement
 from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Nguồn style: file mẫu của lớp; nếu không còn thì dùng chính bản đã sinh
+# trước đó (nó kế thừa đủ style từ file mẫu) để script luôn chạy được.
 MAU = os.path.join(os.path.expanduser("~"), "Downloads", "nhom_9-checkpoint1.docx")
 OUT_DOCX = os.path.join(ROOT, "CHECKPOINT1-Cham-cong-dinh-vi-3D.docx")
 DG = os.path.join(ROOT, "docs", "diagrams")
@@ -33,6 +35,8 @@ THANH_VIEN = [
 ]
 
 # ---------------------------------------------------------------------------
+if not os.path.exists(MAU):
+    MAU = OUT_DOCX
 doc = Document(MAU)
 
 # numPr dùng để tắt đánh số cho các Heading 1 kiểu "DANH MỤC HÌNH"
@@ -286,6 +290,7 @@ for line in [
     "Bảng 2.5\tCông nghệ sử dụng",
     "Bảng 3.1\tBốn quy tắc phát hiện bất thường",
     "Bảng 4.1\tKết quả ba tình huống kiểm thử",
+    "Bảng 4.2	Kết quả chạy thật trên PostgreSQL + PostGIS",
     "Bảng B.1\tKế hoạch triển khai theo giai đoạn",
 ]:
     para(line)
@@ -988,6 +993,30 @@ body_text(
 image(os.path.join(SHOT, "02-ket-qua-nghi-ngo.png"),
       "Hình 4.1 — Kết quả tình huống chấm công sai tầng; điểm chấm công (hình cầu) nằm "
       "trong khối của doanh nghiệp khác", folder=SHOT)
+
+para()
+para("Kiểm chứng phần cơ sở dữ liệu", bold=True)
+body_text(
+    "Toàn bộ lược đồ và các hàm nghiệp vụ đã được chạy thật trên PostgreSQL 17.6 kết "
+    "hợp PostGIS 3.6.2, không dừng ở mức mã nguồn. Kết quả trên cơ sở dữ liệu trùng "
+    "khớp với bản cài đặt bằng JavaScript ở phía trình duyệt, xác nhận hai bên dùng "
+    "chung một thuật toán.")
+table(
+    ["Hạng mục kiểm chứng", "Kết quả"],
+    [
+        ["Chạy schema.sql", "Thành công, tạo 15 bảng, 4 hàm và 1 trigger"],
+        ["Chạy seed.sql", "Thành công, nạp dữ liệu toà nhà IFC One Saigon và ba văn phòng"],
+        ["Trigger suy cao độ từ dải tầng",
+         "Alpha 23,60–42,20 m · Beta 93,35–116,60 m · Gamma 163,10–191,00 m, "
+         "đúng công thức ở mục 2.1.3"],
+        ["Hàm kiem_tra_bao_ham()",
+         "Đúng tầng → HOP_LE; sai tầng → NGHI_NGO; ngoài toà nhà → NGOAI_VUNG"],
+        ["Hàm kiem_tra_r2() (dịch chuyển bất khả thi)",
+         "Chấm công lại sau 3 phút ở vị trí cách 200 km → phát hiện bất thường; "
+         "cùng toạ độ → không cảnh báo"],
+    ],
+    widths=[2.4, 3.7],
+    caption="Bảng 4.2 — Kết quả chạy thật trên PostgreSQL 17.6 + PostGIS 3.6.2")
 
 h2("Ưu điểm")
 bullets([
