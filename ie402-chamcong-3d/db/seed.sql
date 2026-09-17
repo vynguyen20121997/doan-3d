@@ -77,12 +77,13 @@ VALUES
     (4, 3, 4, 'Phạm Thu Dung',   'dung.pt@gammamedia.vn');
 SELECT setval('nhan_vien_ma_nhan_vien_seq', 4);
 
--- mật khẩu mẫu "123456" đã băm bcrypt
+-- mật khẩu mẫu "123456", băm bằng bcrypt (cost 10) — sinh bằng:
+--   cd server && npm run hash
 INSERT INTO nguoi_dung (ma_nhan_vien, ma_vai_tro, ten_dang_nhap, mat_khau_bam) VALUES
-    (1, 1, 'an.nv',   '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'),
-    (2, 2, 'binh.tt', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'),
-    (3, 1, 'cuong.lm','$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy'),
-    (4, 3, 'dung.pt', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy');
+    (1, 1, 'an.nv',   '$2a$10$Bq..k6/C0RGCKCBql.SDR.MqfRwEOIJlT23pB7Zdo3d3U2cMNUhHm'),
+    (2, 2, 'binh.tt', '$2a$10$Bq..k6/C0RGCKCBql.SDR.MqfRwEOIJlT23pB7Zdo3d3U2cMNUhHm'),
+    (3, 1, 'cuong.lm','$2a$10$Bq..k6/C0RGCKCBql.SDR.MqfRwEOIJlT23pB7Zdo3d3U2cMNUhHm'),
+    (4, 3, 'dung.pt', '$2a$10$Bq..k6/C0RGCKCBql.SDR.MqfRwEOIJlT23pB7Zdo3d3U2cMNUhHm');
 
 INSERT INTO thiet_bi (ma_nhan_vien, dinh_danh_thiet_bi, he_dieu_hanh, duoc_tin_cay) VALUES
     (1, 'dev-an-001',   'Android 14', TRUE),

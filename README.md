@@ -42,15 +42,22 @@ sai tầng**.
 | `DO-AN.md` | Hồ sơ thiết kế đầy đủ (ERD, Use Case, DFD, Sequence dạng Mermaid) |
 | `CHECKPOINT1-*.docx` | Báo cáo Checkpoint 1 theo mẫu của lớp |
 | `DO-AN-IE402-*.docx` | Báo cáo theo mẫu đồ án môn học |
-| `prototype/` | Bản dựng thử: 3 khối MAP trên toà nhà IFC One Saigon |
+| `server/` | Máy chủ Node.js + Express: đăng nhập JWT, API chấm công, duyệt đơn, báo cáo |
+| `web/` | Giao diện web nối API, bản đồ 3D dựng bằng ArcGIS SDK |
+| `prototype/` | Bản dựng đầu tiên: chỉ thuật toán, chạy hoàn toàn ở trình duyệt |
 | `db/` | Lược đồ PostGIS + dữ liệu mẫu + hàm `kiem_tra_bao_ham()` |
 | `tools/` | Script sinh tài liệu, chuyển đổi, và tự động hoá thao tác trình duyệt |
 | `docs/` | Sơ đồ đã kết xuất và ảnh chụp kết quả |
 
 ```bash
-cd ie402-chamcong-3d/prototype
-npx http-server -p 8100 -c-1      # rồi mở http://127.0.0.1:8100/index.html
+cd ie402-chamcong-3d/server
+npm install && npm start          # rồi mở http://127.0.0.1:3000
 ```
+
+Cần dựng PostgreSQL + PostGIS trước — xem
+[`ie402-chamcong-3d/db/README.md`](ie402-chamcong-3d/db/README.md) (hướng dẫn bản
+portable, không cần Docker). Chi tiết vận hành và kịch bản trình diễn:
+[`ie402-chamcong-3d/README.md`](ie402-chamcong-3d/README.md).
 
 Kết quả kiểm thử trên toà nhà thật (IFC One Saigon, 42 tầng / 195,3 m):
 

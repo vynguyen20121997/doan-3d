@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hệ thống chấm công định vị 3D</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css" />
+  <script src="https://js.arcgis.com/4.29/"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ===================== MÀN HÌNH ĐĂNG NHẬP ===================== -->
+<div id="manDangNhap" class="man-dang-nhap">
+  <form class="the-dang-nhap" id="formDangNhap">
+    <h1>Chấm công định vị 3D</h1>
+    <p class="phu">Đồ án IE402 — Hệ thống thông tin địa lý 3 chiều · Nhóm 1</p>
+
+    <label>Tên đăng nhập</label>
+    <input id="tenDangNhap" autocomplete="username" required />
+
+    <label>Mật khẩu</label>
+    <input id="matKhau" type="password" autocomplete="current-password" required />
+
+    <button class="btn chinh" type="submit">Đăng nhập</button>
+    <p class="loi" id="loiDangNhap"></p>
+
+    <div class="goi-y">
+      <b>Tài khoản thử nghiệm</b> (mật khẩu đều là <code>123456</code>)
+      <table>
+        <tr><td><a href="#" data-tk="an.nv">an.nv</a></td>
+            <td>Nguyễn Văn An</td><td>Nhân viên · Alpha Tech, tầng 5–8</td></tr>
+        <tr><td><a href="#" data-tk="binh.tt">binh.tt</a></td>
+            <td>Trần Thị Bình</td><td>Quản lý</td></tr>
+        <tr><td><a href="#" data-tk="cuong.lm">cuong.lm</a></td>
+            <td>Lê Minh Cường</td><td>Nhân viên · Beta Finance, tầng 20–24</td></tr>
+        <tr><td><a href="#" data-tk="dung.pt">dung.pt</a></td>
+            <td>Phạm Thu Dung</td><td>Quản trị · Gamma Media, tầng 35–40</td></tr>
+      </table>
+    </div>
+  </form>
+</div>
+
+<!-- ===================== ỨNG DỤNG ===================== -->
+<div id="ungDung" class="an">
+  <header class="thanh-tren">
+    <div class="hieu">Chấm công định vị 3D</div>
+    <nav class="tab">
+      <button data-tab="chamcong" class="chon">Chấm công</button>
+      <button data-tab="lichsu">Lịch sử</button>
+      <button data-tab="quanly" class="chi-quan-ly">Quản lý</button>
+    </nav>
+    <div class="nguoi-dung">
+      <span id="tenNguoiDung"></span>
+      <span class="huy-hieu" id="vaiTro"></span>
+      <button class="btn nho" id="btnThoat">Thoát</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ---------- TAB CHẤM CÔNG ---------- -->
+    <section id="tab-chamcong" class="tab-noi-dung">
+      <div class="cot-trai">
+        <div class="the">
+          <h2>Thông tin làm việc</h2>
+          <dl id="thongTinLamViec"></dl>
+        </div>
+
+        <div class="the">
+          <h2>Chấm công</h2>
+
+          <label>Tầng đang làm việc</label>
+          <div class="hang">
+            <input type="range" id="tang" min="1" max="42" value="6" />
+            <span class="so" id="tangHienThi">6</span>
+          </div>
+          <p class="ghi-chu" id="caoDoSuyRa"></p>
+
+          <label>Nguồn vị trí</label>
+          <div class="hang nut-nhom">
+            <button class="btn phu chon" id="btnGps">GPS thiết bị</button>
+            <button class="btn phu" id="btnMoPhong">Mô phỏng (bấm bản đồ)</button>
+          </div>
+
+          <div class="hang nut-nhom">
+            <button class="btn chinh" id="btnVao">Chấm công VÀO</button>
+            <button class="btn chinh xam" id="btnRa">Chấm công RA</button>
+          </div>
+
+          <div id="ketQua" class="ket-qua an"></div>
+        </div>
+      </div>
+
+      <div id="banDo"></div>
+    </section>
+
+    <!-- ---------- TAB LỊCH SỬ ---------- -->
+    <section id="tab-lichsu" class="tab-noi-dung an">
+      <div class="the rong">
+        <h2>Lịch sử chấm công của tôi</h2>
+        <table class="bang" id="bangLichSu">
+          <thead><tr>
+            <th>Thời điểm</th><th>Loại</th><th>Tầng</th><th>Cao độ</th>
+            <th>Trạng thái</th><th>Cảnh báo</th><th>Giải trình</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ---------- TAB QUẢN LÝ ---------- -->
+    <section id="tab-quanly" class="tab-noi-dung an">
+      <div class="the rong">
+        <h2>Bảng điều khiển</h2>
+        <div class="o-so" id="oSo"></div>
+      </div>
+
+      <div class="the rong">
+        <h2>Cảnh báo bất thường</h2>
+        <table class="bang" id="bangCanhBao">
+          <thead><tr>
+            <th>Mức</th><th>Quy tắc</th><th>Nhân viên</th><th>Thời điểm</th>
+            <th>Mô tả</th><th>Đã xử lý</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="the rong">
+        <h2>Đơn giải trình chờ duyệt</h2>
+        <table class="bang" id="bangDon">
+          <thead><tr>
+            <th>Nhân viên</th><th>Bản ghi</th><th>Lý do</th><th>Trạng thái</th><th></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <div class="the rong">
+        <h2>Báo cáo công tháng này</h2>
+        <table class="bang" id="bangBaoCao">
+          <thead><tr>
+            <th>Nhân viên</th><th>Công ty</th><th>Lượt vào</th>
+            <th>Hợp lệ</th><th>Nghi ngờ</th><th>Ngoài vùng</th><th>Số ngày công</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -14,3 +14,6 @@ lab-3d-buudien/
 Thumbs.db
 .vscode/
 .idea/
+
+# Biến môi trường thật (chỉ đưa lên .env.example)
+.env

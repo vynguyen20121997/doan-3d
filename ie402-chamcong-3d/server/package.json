@@ -1,0 +1,20 @@
+{
+  "name": "chamcong-3d-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Máy chủ hệ thống chấm công định vị 3D — đồ án IE402",
+  "type": "commonjs",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "hash": "node src/tao-mat-khau.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.12.0"
+  }
+}
