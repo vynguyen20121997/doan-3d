@@ -643,7 +643,13 @@ def ch4_dinh_huong(b):
 # ---------------------------------------------------------------------------
 def main():
     if not os.path.exists(TEMPLATE):
-        raise SystemExit("Không tìm thấy template: %s" % TEMPLATE)
+        raise SystemExit(
+            "Không tìm thấy tệp mẫu: " + TEMPLATE
+            + "\nScript này điền nội dung vào các chỗ giữ chỗ <...> của mẫu đồ án do"
+            + " lớp phát, nên bắt buộc phải có tệp đó."
+            + "\nBản .docx đã sinh trước đây vẫn nằm ở thư mục gốc dự án và dùng được"
+            + " bình thường; chỉ là không sinh lại được cho tới khi chép lại tệp mẫu."
+            + "\nBáo cáo Checkpoint 1 (tools/build_checkpoint1.py) không bị ảnh hưởng.")
 
     doc = Document(TEMPLATE)
 

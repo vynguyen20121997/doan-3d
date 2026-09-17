@@ -276,6 +276,8 @@ for line in [
     "Hình 2.6\tSơ đồ trình tự dựng khối MAP",
     "Hình 2.7\tSơ đồ trình tự duyệt đơn giải trình",
     "Hình 3.1\tBa khối MAP trong cùng một toà nhà (bản dựng thử nghiệm)",
+    "Hình 3.2	Màn hình chấm công của hệ thống đã cài đặt",
+    "Hình 3.3	Bảng điều khiển của quản lý",
     "Hình 4.1\tKết quả tình huống chấm công sai tầng",
 ]:
     para(line)
@@ -290,7 +292,9 @@ for line in [
     "Bảng 2.5\tCông nghệ sử dụng",
     "Bảng 3.1\tBốn quy tắc phát hiện bất thường",
     "Bảng 4.1\tKết quả ba tình huống kiểm thử",
+    "Bảng 3.2	Các điểm cuối API của hệ thống",
     "Bảng 4.2	Kết quả chạy thật trên PostgreSQL + PostGIS",
+    "Bảng 4.3	Kết quả kiểm thử đầu cuối trên hệ thống đã cài đặt",
     "Bảng B.1\tKế hoạch triển khai theo giai đoạn",
 ]:
     para(line)
@@ -962,6 +966,62 @@ bullets([
     "Bảng tổng hợp giờ công theo tháng, hỗ trợ xuất tệp.",
     "Công cụ quản trị khối MAP: thêm, sửa, vô hiệu hoá khối và điều chỉnh dung sai.",
 ])
+
+h2("Cài đặt hệ thống")
+body_text(
+    "Hệ thống đã được cài đặt hoàn chỉnh chứ không dừng ở bản mô phỏng thuật toán. "
+    "Máy chủ viết bằng Node.js với Express, nói chuyện trực tiếp với PostgreSQL/PostGIS "
+    "và phục vụ luôn giao diện web tĩnh, nên toàn bộ hệ thống chạy trên một cổng duy "
+    "nhất — thuận lợi cho việc trình diễn vì Geolocation API chấp nhận localhost.")
+body_text(
+    "Điểm đáng chú ý về mặt kiến trúc: phép kiểm tra bao hàm khối không được viết lại "
+    "ở tầng ứng dụng mà gọi thẳng hàm kiem_tra_bao_ham() và kiem_tra_r2() đã cài đặt "
+    "trong cơ sở dữ liệu. Nhờ vậy logic không gian chỉ tồn tại một bản duy nhất, đặt "
+    "ngay cạnh dữ liệu, tránh tình trạng hai nơi cùng cài đặt rồi lệch nhau.")
+body_text(
+    "Mỗi lần chấm công được xử lý trong một giao dịch: ghi bản ghi, áp bốn quy tắc "
+    "R1–R4 rồi ghi các cảnh báo tương ứng. Nếu bất kỳ bước nào lỗi thì toàn bộ được "
+    "huỷ, không để lại bản ghi dở dang.")
+table(
+    ["Thành phần", "Công nghệ", "Vai trò"],
+    [
+        ["server/", "Node.js + Express + pg",
+         "11 điểm cuối API, xác thực JWT, phân quyền ba vai trò"],
+        ["web/", "HTML/CSS/JavaScript thuần + ArcGIS SDK",
+         "Đăng nhập, chấm công, lịch sử, bảng điều khiển, bản đồ ba chiều"],
+        ["db/", "PostgreSQL 17.6 + PostGIS 3.6.2",
+         "15 bảng, 4 hàm, 1 trigger; chứa toàn bộ logic không gian"],
+    ],
+    widths=[1.1, 2.1, 2.9])
+
+h3("Danh sách điểm cuối API")
+table(
+    ["Phương thức", "Đường dẫn", "Quyền", "Chức năng"],
+    [
+        ["POST", "/api/dang-nhap", "—", "Đăng nhập, trả về JWT"],
+        ["GET", "/api/toi", "đã đăng nhập", "Thông tin nhân viên và khối MAP của họ"],
+        ["GET", "/api/khu-vuc", "đã đăng nhập", "Danh sách khối MAP để vẽ bản đồ"],
+        ["POST", "/api/cham-cong", "đã đăng nhập",
+         "Kiểm tra bao hàm khối, áp R1–R4, ghi bản ghi và cảnh báo"],
+        ["GET", "/api/cham-cong/lich-su", "đã đăng nhập", "Lịch sử của chính mình"],
+        ["POST", "/api/giai-trinh", "đã đăng nhập", "Gửi đơn giải trình"],
+        ["GET", "/api/giai-trinh", "quản lý", "Danh sách đơn"],
+        ["PUT", "/api/giai-trinh/:id", "quản lý", "Duyệt hoặc từ chối đơn"],
+        ["GET", "/api/canh-bao", "quản lý", "Danh sách cảnh báo bất thường"],
+        ["GET", "/api/dashboard", "quản lý", "Số liệu tổng hợp"],
+        ["GET", "/api/bao-cao/cong", "quản lý", "Báo cáo công theo tháng"],
+    ],
+    widths=[0.85, 1.6, 0.95, 2.7],
+    caption="Bảng 3.2 — Các điểm cuối API của hệ thống")
+
+h3("Giao diện đã cài đặt")
+image(os.path.join(SHOT, "03-app-cham-cong.png"),
+      "Hình 3.2 — Màn hình chấm công: thông tin làm việc lấy từ cơ sở dữ liệu, thanh "
+      "chọn tầng, bản đồ ba chiều hiển thị các khối MAP kèm popup thuộc tính",
+      folder=SHOT)
+image(os.path.join(SHOT, "04-app-quan-ly.png"),
+      "Hình 3.3 — Bảng điều khiển của quản lý: số liệu tổng hợp và danh sách cảnh báo "
+      "bất thường sinh ra từ bốn quy tắc R1–R4", folder=SHOT)
 page_break()
 
 # ===========================================================================
@@ -1017,6 +1077,33 @@ table(
     ],
     widths=[2.4, 3.7],
     caption="Bảng 4.2 — Kết quả chạy thật trên PostgreSQL 17.6 + PostGIS 3.6.2")
+
+para()
+para("Kiểm chứng toàn hệ thống", bold=True)
+body_text(
+    "Sau khi hoàn thiện máy chủ và giao diện, các luồng nghiệp vụ được chạy thử đầu "
+    "cuối qua API thật trên cơ sở dữ liệu thật. Kết quả cho thấy bốn quy tắc phát hiện "
+    "bất thường đều hoạt động, phân quyền chặn đúng, và luồng giải trình khép kín.")
+table(
+    ["Kịch bản kiểm thử", "Kết quả hệ thống trả về"],
+    [
+        ["Chấm công đúng tầng 6", "HOP_LE"],
+        ["Khai báo tầng 22 trong khi thuê tầng 5–8",
+         "NGHI_NGO, kèm cảnh báo R1: lệch 62,78 m tương đương 13,5 tầng"],
+        ["Chấm công ở vị trí cách toà nhà 270 m",
+         "NGOAI_VUNG, kèm cảnh báo R2 về dịch chuyển bất khả thi"],
+        ["Thiết bị báo độ chính xác 0,3 m",
+         "Cảnh báo R3: độ chính xác nhỏ bất thường, nghi giả lập vị trí"],
+        ["Nhân viên khác dùng lại cùng một thiết bị",
+         "Cảnh báo R4: thiết bị vừa được nhân viên khác dùng để chấm công"],
+        ["Nhân viên gọi API dành cho quản lý",
+         "HTTP 403 — không đủ quyền thực hiện chức năng này"],
+        ["Quản lý duyệt đơn giải trình",
+         "Bản ghi chuyển từ NGOAI_VUNG sang HOP_LE, các cảnh báo liên quan được đóng, "
+         "báo cáo công cập nhật theo"],
+    ],
+    widths=[2.7, 3.4],
+    caption="Bảng 4.3 — Kết quả kiểm thử đầu cuối trên hệ thống đã cài đặt")
 
 h2("Ưu điểm")
 bullets([
