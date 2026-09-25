@@ -134,3 +134,23 @@ dl dd { margin: 0; font-weight: 600; text-align: right; }
 .o-so .o { background: var(--nen); border-radius: 8px; padding: 11px 13px; }
 .o-so .o b { display: block; font-size: 21px; }
 .o-so .o span { font-size: 11.5px; color: var(--chu-nhat); }
+
+/* Tiêu đề thẻ có kèm nút xuất tệp ở mép phải */
+.dau-the {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dau-the h2 { margin: 0; }
+button.xuat {
+  padding: 5px 12px;
+  font-size: 13px;
+  border: 1px solid #c7ccd4;
+  border-radius: 6px;
+  background: #fff;
+  color: #2c3340;
+  cursor: pointer;
+}
+button.xuat:hover { background: #f2f4f7; border-color: #9aa3b0; }
+button.xuat:disabled { opacity: .55; cursor: progress; }

@@ -2,8 +2,48 @@
 const express = require("express");
 const { q } = require("../db");
 const { canDangNhap } = require("../auth");
+const { taoCsv, guiCsv } = require("../csv");
 
 const router = express.Router();
+
+/* ------------------------------------------------------------------ *
+ * Xuất lịch sử chấm công của chính mình ra CSV
+ * ------------------------------------------------------------------ */
+router.get("/cham-cong/lich-su.csv", canDangNhap, async (req, res) => {
+  const { rows } = await q(
+    `SELECT b.ma_ban_ghi, b.thoi_diem, b.loai, b.trang_thai,
+            b.tang_khai_bao, b.nguon_cao_do,
+            ST_X(b.vi_tri) AS kinh_do, ST_Y(b.vi_tri) AS vi_do, ST_Z(b.vi_tri) AS cao_do,
+            b.do_chinh_xac_ngang,
+            (SELECT count(*) FROM canh_bao_bat_thuong c WHERE c.ma_ban_ghi = b.ma_ban_ghi)
+              AS so_canh_bao,
+            (SELECT string_agg(c.ma_quy_tac, ' ' ORDER BY c.ma_quy_tac)
+               FROM canh_bao_bat_thuong c WHERE c.ma_ban_ghi = b.ma_ban_ghi)
+              AS cac_quy_tac,
+            d.trang_thai AS trang_thai_don
+       FROM ban_ghi_cham_cong b
+       LEFT JOIN don_giai_trinh d ON d.ma_ban_ghi = b.ma_ban_ghi
+      WHERE b.ma_nhan_vien = $1
+      ORDER BY b.thoi_diem DESC`,
+    [req.nguoiDung.ma_nhan_vien]
+  );
+  const csv = taoCsv([
+    ["ma_ban_ghi", "Mã bản ghi"],
+    ["thoi_diem", "Thời điểm"],
+    ["loai", "Loại"],
+    ["trang_thai", "Trạng thái"],
+    ["tang_khai_bao", "Tầng khai báo"],
+    ["cao_do", "Cao độ (m)"],
+    ["nguon_cao_do", "Nguồn cao độ"],
+    ["kinh_do", "Kinh độ"],
+    ["vi_do", "Vĩ độ"],
+    ["do_chinh_xac_ngang", "Độ chính xác ngang (m)"],
+    ["so_canh_bao", "Số cảnh báo"],
+    ["cac_quy_tac", "Quy tắc vi phạm"],
+    ["trang_thai_don", "Đơn giải trình"],
+  ], rows);
+  guiCsv(res, "cham-cong-" + req.nguoiDung.ma_nhan_vien + ".csv", csv);
+});
 
 /* ------------------------------------------------------------------ *
  * Thông tin người đang đăng nhập + văn phòng + khối MAP của họ
