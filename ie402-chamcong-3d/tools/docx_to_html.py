@@ -13,9 +13,17 @@ from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
+import sys
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "CHECKPOINT1-Cham-cong-dinh-vi-3D.docx")
-OUT = os.path.join(ROOT, "scratch", "checkpoint1.html")
+
+# Cho phép chọn tệp nguồn / tệp đích / mốc bỏ qua phần bìa qua tham số dòng lệnh:
+#   python tools/docx_to_html.py [file.docx] [out.html] ["mốc bắt đầu"]
+# Mốc bắt đầu: bỏ mọi đoạn trước đoạn đầu tiên chứa chuỗi này — dùng khi tài liệu
+# đích đã có sẵn trang bìa, chỉ cần dán phần ruột.
+SRC = os.path.join(ROOT, sys.argv[1]) if len(sys.argv) > 1     else os.path.join(ROOT, "CHECKPOINT1-Cham-cong-dinh-vi-3D.docx")
+OUT = os.path.join(ROOT, sys.argv[2]) if len(sys.argv) > 2     else os.path.join(ROOT, "scratch", "checkpoint1.html")
+MOC_BAT_DAU = sys.argv[3] if len(sys.argv) > 3 else None
 
 FONT = "font-family:Times New Roman,serif"   # khong dat nhay: Google Docs bo qua khi co nhay
 
@@ -103,10 +111,19 @@ def table_html(t):
 
 parts = []
 bodies = d.element.body
+da_toi_moc = MOC_BAT_DAU is None
 for child in bodies:
     if child.tag == qn("w:p"):
-        parts.append(para_html(Paragraph(child, d)))
+        par = Paragraph(child, d)
+        if not da_toi_moc:
+            if MOC_BAT_DAU in par.text:
+                da_toi_moc = True
+            else:
+                continue
+        parts.append(para_html(par))
     elif child.tag == qn("w:tbl"):
+        if not da_toi_moc:
+            continue
         parts.append(table_html(Table(child, d)))
 
 doc_html = (
