@@ -10,6 +10,8 @@ var khuVuc = [];              // danh sách khối MAP
 var viTriMoPhong = null;      // toạ độ do người dùng bấm trên bản đồ
 var dangChoBamBanDo = false;
 var view = null, lopDiem = null, lopKhoi = null;
+var lopToaNha = null;         // vỏ toàn bộ toà nhà, dựng từ footprint thật
+var lopTang = null;           // tấm sàn của tầng đang chọn trên thanh trượt
 
 /* ---------------- gọi API ---------------- */
 async function api(duong, tuyChon) {
@@ -133,6 +135,7 @@ function capNhatTang() {
   $("caoDoSuyRa").textContent =
     "Cao độ suy ra từ tầng: " + caoDoCuaTang(t).toFixed(2) + " m " +
     "(dùng khi thiết bị không đo được cao độ)";
+  veTangDangChon(t);
 }
 $("tang").addEventListener("input", capNhatTang);
 
@@ -260,17 +263,32 @@ function dungBanDo() {
     "esri/Graphic", "esri/geometry/Polygon", "esri/geometry/Point",
   ], function (Map, SceneView, GraphicsLayer, Graphic, Polygon, Point) {
 
-    lopKhoi = new GraphicsLayer({ elevationInfo: { mode: "absolute-height" } });
-    lopDiem = new GraphicsLayer({ elevationInfo: { mode: "absolute-height" } });
+    var tuyChonLop = { elevationInfo: { mode: "absolute-height" } };
+    lopToaNha = new GraphicsLayer(tuyChonLop);
+    lopKhoi   = new GraphicsLayer(tuyChonLop);
+    lopTang   = new GraphicsLayer(tuyChonLop);
+    lopDiem   = new GraphicsLayer(tuyChonLop);
 
     var map = new Map({
       basemap: "topo-vector",
       ground: "world-elevation",
-      layers: [lopKhoi, lopDiem],
+      // Thứ tự vẽ: vỏ toà nhà nằm dưới, tấm sàn và điểm chấm công nằm trên.
+      layers: [lopToaNha, lopKhoi, lopTang, lopDiem],
     });
 
     var mau = [[232, 98, 42], [31, 111, 235], [130, 80, 223], [26, 127, 55]];
     var tam = null;
+
+    /* --- toà nhà: dựng nhiều khối cho giống công trình thật ----------
+       Nguồn hình: footprint thật của toà nhà trong CSDL. Từ đường bao đó
+       suy ra đế, thân tháp kính, dải sàn từng tầng, chóp mái và cột thu lôi.
+       Mỗi toà nhà chỉ dựng một lần dù có nhiều văn phòng bên trong.     */
+    var daVe = {};
+    khuVuc.forEach(function (k) {
+      if (!k.footprint_toa_nha || daVe[k.ten_toa_nha]) return;
+      daVe[k.ten_toa_nha] = true;
+      dungKhoiNha(Graphic, Polygon, Point, k);
+    });
 
     khuVuc.forEach(function (k, i) {
       var hinh = JSON.parse(k.da_giac_nen);
@@ -290,7 +308,7 @@ function dungBanDo() {
           symbolLayers: [{
             type: "extrude",
             size: zMax - zMin,
-            material: { color: c.concat([laCuaToi ? 0.6 : 0.3]) },
+            material: { color: c.concat([laCuaToi ? 0.30 : 0.16]) },
             edges: { type: "solid", size: laCuaToi ? 1.6 : 0.8, color: c.concat([1]) },
           }],
         },
@@ -311,8 +329,10 @@ function dungBanDo() {
       container: "banDo",
       map: map,
       camera: {
-        position: [tam[0] - 0.0016, tam[1] - 0.0016, 320],
-        heading: 40, tilt: 68,
+        // Khung hình lấy trọn 42 tầng: thấy được tầng đang chọn nằm trong hay
+        // ngoài dải khối của mình, thay vì chỉ nhìn thấy mỗi dải khối.
+        position: [tam[0] - 0.0040, tam[1] - 0.0040, 215],
+        heading: 35, tilt: 70,
       },
     });
     view.ui.move("zoom", "top-right");
@@ -327,6 +347,151 @@ function dungBanDo() {
     });
 
     window.ungDung = { view: view, api: api, chamCong: chamCong };
+    veTangDangChon(Number($("tang").value));
+  });
+}
+
+/* Dựng hình khối một toà nhà từ đường bao thật.
+   Chia thành đế, thân tháp, dải sàn, chóp mái và cột thu lôi để khối nhà
+   đọc ra là một cao ốc chứ không phải một hộp trơn. */
+function dungKhoiNha(Graphic, Polygon, Point, k) {
+  var fp = JSON.parse(k.footprint_toa_nha);
+  var zNen = Number(k.cao_do_nen);
+  var hTang = Number(k.chieu_cao_tang);
+  var soTang = Number(k.so_tang);
+  var dinh = zNen + soTang * hTang;
+
+  /* Tâm đường bao, dùng làm gốc khi phóng to / thu nhỏ mặt bằng. */
+  var diem = fp.coordinates[0];
+  var cx = 0, cy = 0;
+  diem.forEach(function (p) { cx += p[0]; cy += p[1]; });
+  cx /= diem.length; cy /= diem.length;
+
+  /* Phóng mặt bằng theo hệ số quanh tâm, trả về rings ở cao độ z. */
+  function mat(heSo, z) {
+    return fp.coordinates.map(function (r) {
+      return r.map(function (p) {
+        return [cx + (p[0] - cx) * heSo, cy + (p[1] - cy) * heSo, z];
+      });
+    });
+  }
+  function khoi(heSo, z, cao, mauSac, vien, coVien) {
+    return new Graphic({
+      geometry: new Polygon({ rings: mat(heSo, z), spatialReference: { wkid: 4326 } }),
+      symbol: {
+        type: "polygon-3d",
+        symbolLayers: [{
+          type: "extrude",
+          size: cao,
+          material: { color: mauSac },
+          edges: coVien ? { type: "solid", size: 0.7, color: vien } : null,
+        }],
+      },
+    });
+  }
+
+  var KINH   = [138, 170, 190, 0.26];   // kính xanh lam nhạt, đủ trong để nhìn thấy tầng
+  var BETONG = [206, 208, 210, 0.92];
+  var VIEN   = [92, 104, 118, 0.8];
+
+  /* Sân nền quanh chân công trình. */
+  lopToaNha.add(khoi(2.1, zNen - 0.4, 0.4, [225, 225, 222, 0.95], [180, 180, 176, 1], false));
+
+  /* Đế bốn tầng, rộng hơn thân tháp. */
+  var hDe = 4 * hTang;
+  lopToaNha.add(khoi(1.22, zNen, hDe, [196, 198, 200, 0.75], VIEN, true));
+  lopToaNha.add(khoi(1.26, zNen + hDe, 0.9, BETONG, VIEN, false));   // mái đế nhô ra
+
+  /* Thân tháp kính, từ đỉnh đế lên tới sàn mái. */
+  lopToaNha.add(khoi(1.0, zNen + hDe, dinh - (zNen + hDe), KINH, VIEN, true));
+
+  /* Dải sàn từng tầng: vành bê tông mỏng nhô ra, tạo vệt ngang của cao ốc. */
+  for (var t = 5; t <= soTang; t++) {
+    lopToaNha.add(khoi(1.035, zNen + t * hTang - 0.35, 0.5, BETONG, VIEN, false));
+  }
+
+  /* Chóp mái thu nhỏ + cột thu lôi. */
+  lopToaNha.add(khoi(0.82, dinh, hTang * 1.6, [178, 184, 190, 0.9], VIEN, true));
+  lopToaNha.add(khoi(0.5, dinh + hTang * 1.6, 2.2, BETONG, VIEN, false));
+  lopToaNha.add(new Graphic({
+    geometry: new Point({ longitude: cx, latitude: cy,
+                          z: dinh + hTang * 1.6 + 2.2 + 5,
+                          spatialReference: { wkid: 4326 } }),
+    symbol: {
+      type: "point-3d",
+      symbolLayers: [{
+        type: "object", resource: { primitive: "cylinder" },
+        material: { color: [120, 128, 136] },
+        width: 0.8, depth: 0.8, height: 10,
+      }],
+    },
+  }));
+
+  /* Nhãn tên toà nhà, gắn ở cao độ đỉnh mái. */
+  lopToaNha.add(new Graphic({
+    geometry: new Point({ longitude: cx, latitude: cy, z: dinh + hTang * 1.2,
+                          spatialReference: { wkid: 4326 } }),
+    symbol: {
+      type: "point-3d",
+      symbolLayers: [{
+        type: "text", text: k.ten_toa_nha,
+        material: { color: [40, 48, 58] },
+        halo: { color: [255, 255, 255, 0.9], size: 1.2 },
+        size: 11,
+      }],
+    },
+    popupTemplate: {
+      title: k.ten_toa_nha,
+      content:
+        "<b>Số tầng:</b> " + soTang + "<br/>" +
+        "<b>Chiều cao tầng:</b> " + hTang.toFixed(2) + " m<br/>" +
+        "<b>Cao độ nền:</b> " + zNen.toFixed(2) + " m<br/>" +
+        "<b>Sàn mái:</b> " + dinh.toFixed(2) + " m",
+    },
+  }));
+}
+
+/* Tô sáng đúng tấm sàn của tầng đang chọn, đặt trong vỏ toà nhà.
+   Xanh lá = tầng nằm trong dải được phép; hổ phách = nằm ngoài. */
+function veTangDangChon(tang) {
+  if (!lopTang) return;
+  var kv = khuVuc.find(function (k) { return k.ma_khu_vuc === toi.ma_khu_vuc; });
+  if (!kv || !kv.footprint_toa_nha) return;
+
+  require(["esri/Graphic", "esri/geometry/Polygon"], function (Graphic, Polygon) {
+    lopTang.removeAll();
+
+    var hTang = Number(kv.chieu_cao_tang);
+    var zSan = Number(kv.cao_do_nen) + (tang - 1) * hTang;
+    var trongDai = tang >= kv.tang_bat_dau && tang <= kv.tang_ket_thuc;
+    var c = trongDai ? [26, 160, 80] : [214, 158, 30];
+
+    var fp = JSON.parse(kv.footprint_toa_nha);
+    var rings = fp.coordinates.map(function (r) {
+      return r.map(function (p) { return [p[0], p[1], zSan]; });
+    });
+
+    lopTang.add(new Graphic({
+      geometry: new Polygon({ rings: rings, spatialReference: { wkid: 4326 } }),
+      symbol: {
+        type: "polygon-3d",
+        symbolLayers: [{
+          type: "extrude",
+          size: hTang,
+          material: { color: c.concat([0.85]) },
+          edges: { type: "solid", size: 2, color: c.concat([1]) },
+        }],
+      },
+      popupTemplate: {
+        title: "Tầng " + tang + (trongDai ? " — trong dải được phép" : " — ngoài dải được phép"),
+        content:
+          "<b>Dải tầng của bạn:</b> " + kv.tang_bat_dau + "–" + kv.tang_ket_thuc + "<br/>" +
+          "<b>Sàn tầng " + tang + ":</b> " + zSan.toFixed(2) + " m<br/>" +
+          "<b>Trần tầng " + tang + ":</b> " + (zSan + hTang).toFixed(2) + " m<br/>" +
+          "<b>Dải khối MAP:</b> " + Number(kv.z_min).toFixed(2) +
+          " – " + Number(kv.z_max).toFixed(2) + " m",
+      },
+    }));
   });
 }
 
@@ -348,6 +513,53 @@ function veDiem(lon, lat, z, trangThai) {
     }));
   });
 }
+
+/* ===================================================================
+   5b. XUẤT TỆP CSV
+   ===================================================================
+   Không dùng thẻ <a href> được vì token nằm trong localStorage chứ không
+   phải cookie: phải tải bằng fetch có Authorization rồi mới tạo blob. */
+async function taiTepCsv(duong, nut) {
+  var chuTruoc = nut.textContent;
+  nut.disabled = true;
+  nut.textContent = "Đang xuất…";
+  try {
+    var r = await fetch(API + duong, {
+      headers: { Authorization: "Bearer " + token },
+    });
+    if (!r.ok) throw new Error("Máy chủ trả về " + r.status);
+
+    // Lấy tên tệp máy chủ đặt trong Content-Disposition (filename* có dấu).
+    var cd = r.headers.get("Content-Disposition") || "";
+    var m = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+    var ten = m ? decodeURIComponent(m[1]) : "xuat.csv";
+
+    var blob = await r.blob();
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = ten;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert("Không xuất được tệp: " + e.message);
+  } finally {
+    nut.disabled = false;
+    nut.textContent = chuTruoc;
+  }
+}
+
+$("btnXuatLichSu").addEventListener("click", function () {
+  taiTepCsv("/api/cham-cong/lich-su.csv", this);
+});
+$("btnXuatCanhBao").addEventListener("click", function () {
+  taiTepCsv("/api/canh-bao.csv", this);
+});
+$("btnXuatBaoCao").addEventListener("click", function () {
+  taiTepCsv("/api/bao-cao/cong.csv", this);
+});
 
 /* ===================================================================
    6. LỊCH SỬ
