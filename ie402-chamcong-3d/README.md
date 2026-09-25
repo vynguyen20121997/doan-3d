@@ -12,10 +12,28 @@ trạng thái mà hệ 2D không tạo được: **đúng toà nhà, sai tầng*
 
 ## 1. Chạy hệ thống
 
-### 1.1 Cơ sở dữ liệu
+### 1.0 Clone về rồi chạy — cách nhanh nhất (Windows)
 
-Dựng PostgreSQL + PostGIS theo [`db/README.md`](db/README.md) (có sẵn hướng dẫn bản
-portable, không cần Docker và không cần quyền admin), rồi nạp dữ liệu:
+Repo **không chứa** `node_modules/` và cũng không chứa PostgreSQL, nên sau khi clone
+phải cài một lần trước khi chạy được.
+
+| Bước | Việc làm |
+|---|---|
+| 1 | Cài **Node.js LTS** (https://nodejs.org) |
+| 2 | Dựng **PostgreSQL + PostGIS** theo [`db/README.md`](db/README.md) — có hướng dẫn bản portable, không cần Docker, không cần quyền admin |
+| 3 | Nhấp đúp **`CAI-DAT.bat`** — chạy `npm install`, tạo CSDL `chamcong3d`, bật PostGIS, nạp `schema.sql` và `seed.sql`. **Chỉ chạy một lần.** |
+| 4 | Nhấp đúp **`BAT-DEMO.bat`** — bật PostgreSQL, bật máy chủ, tự mở trình duyệt |
+| 5 | Xong việc thì nhấp đúp **`TAT-DEMO.bat`** |
+
+`CAI-DAT.bat` và `BAT-DEMO.bat` tự tìm thư mục `bin` của PostgreSQL ở các vị trí quen
+thuộc (`D:\pgportable\pgsql\bin`, `C:\pgportable\pgsql\bin`, bản cài đặt chuẩn, hoặc
+`psql` có sẵn trong `PATH`). Nếu cài ở chỗ khác thì chỉ cần đặt biến môi trường:
+
+```powershell
+set PGBIN=D:\duong\dan\pgsql\bin
+```
+
+### 1.1 Cơ sở dữ liệu (làm tay, nếu không dùng .bat)
 
 ```powershell
 $bin = "D:\pgportable\pgsql\bin"
@@ -25,16 +43,23 @@ $bin = "D:\pgportable\pgsql\bin"
 & "$bin\psql.exe" -h 127.0.0.1 -p 55432 -U postgres -d chamcong3d -f db\seed.sql
 ```
 
-### 1.2 Máy chủ
+`seed.sql` tự kiểm chứng ngay khi nạp: in ra kết quả ba kịch bản TH1 `HOP_LE`,
+TH2 `NGHI_NGO`, TH3 `NGOAI_VUNG` và dải cao độ của ba văn phòng.
+
+### 1.2 Máy chủ (làm tay)
 
 ```bash
 cd server
 npm install
-cp .env.example .env      # sửa lại nếu cổng/mật khẩu khác
 npm start
 ```
 
 Mở **http://127.0.0.1:3000** — máy chủ phục vụ luôn cả giao diện web trong `web/`.
+Kiểm tra sống bằng **http://127.0.0.1:3000/healthz**.
+
+> Không bắt buộc tạo `.env`: `server/src/db.js` đã có sẵn giá trị mặc định
+> (`127.0.0.1:55432`, user `postgres`, database `chamcong3d`). Chỉ cần sao chép
+> `.env.example` thành `.env` khi máy bạn dùng cổng hoặc mật khẩu khác.
 
 ### 1.3 Tài khoản thử nghiệm
 
@@ -80,6 +105,7 @@ ie402-chamcong-3d/
 │       ├── index.js        Khởi tạo app, đăng nhập, phục vụ web tĩnh
 │       ├── db.js           Kết nối PostgreSQL
 │       ├── auth.js         JWT + phân quyền theo vai trò
+│       ├── csv.js          Xuất CSV cho Excel (BOM UTF-8 + sep=;)
 │       └── routes/
 │           ├── chamcong.js Chấm công, lịch sử, gửi giải trình
 │           └── quanly.js   Cảnh báo, duyệt đơn, dashboard, báo cáo
@@ -111,6 +137,9 @@ ie402-chamcong-3d/
 | GET | `/api/canh-bao` | quản lý | Cảnh báo bất thường |
 | GET | `/api/dashboard` | quản lý | Số liệu tổng hợp |
 | GET | `/api/bao-cao/cong` | quản lý | Báo cáo công theo tháng |
+| GET | `/api/cham-cong/lich-su.csv` | đã đăng nhập | Xuất lịch sử của chính mình ra CSV |
+| GET | `/api/canh-bao.csv` | quản lý | Xuất cảnh báo ra CSV |
+| GET | `/api/bao-cao/cong.csv` | quản lý | Xuất báo cáo công ra CSV |
 
 ## 5. Bốn quy tắc phát hiện bất thường
 
